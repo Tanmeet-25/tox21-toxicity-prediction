@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ToxScope — Multi-endpoint toxicity prediction on Tox21</title>
+<meta name="description" content="An interactive explorer for a multi-task Tox21 toxicity model across twelve nuclear-receptor and stress-response assays.">
+<style>__CSS__</style>
+</head>
+<body>
+
+<div id="prog" aria-hidden="true"></div>
+
+<header class="nav" id="nav">
+  <div class="wrap">
+    <div class="brand"><i></i> ToxScope</div>
+    <nav>
+      <a href="#scale">Dataset</a>
+      <a href="#browse">Compounds</a>
+      <a href="#bench">Benchmarks</a>
+      <a href="#assays">Assays</a>
+      <a href="#method">Method</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<section class="hero" id="top">
+  <canvas id="field" aria-hidden="true"></canvas>
+  <div class="wrap">
+    <div class="eyebrow">Project 17 · Cheminformatics</div>
+    <h1 class="big">Twelve toxicity signals.<br><span class="g">One molecule.</span></h1>
+    <p class="sub">A multi-task neural network reads a chemical structure and scores all twelve Tox21
+      assays in a single forward pass — seven nuclear-receptor pathways and five stress-response
+      pathways, from one shared representation of the molecule.</p>
+    <div class="cta">
+      <a class="btn p" href="#browse">Browse compounds</a>
+      <button class="btn s" id="surprise">Open a random compound</button>
+    </div>
+    <div class="hbar">
+      <div><b>__NCOMP__</b><span>COMPOUNDS</span></div>
+      <div><b>12</b><span>ASSAYS</span></div>
+      <div><b>__NSCAF__</b><span>SCAFFOLDS</span></div>
+      <div><b>0.826</b><span>BEST MACRO ROC-AUC</span></div>
+    </div>
+  </div>
+  <div class="scrollcue">Scroll<span></span></div>
+</section>
+
+<section id="scale">
+  <div class="wrap">
+    <div class="shead rv">
+      <div class="skick">The dataset</div>
+      <h2>Built on every compound, not a convenient subset.</h2>
+      <p>Tox21 is a US inter-agency screening programme that put thousands of commercial chemicals,
+        drugs and pesticides through twelve biological assays. It is the standard teaching set for
+        multi-task learning in chemistry precisely because it is messy: the label matrix is full of
+        holes, and active compounds are a small minority in every single column.</p>
+      <p class="small">Figures below are computed from the cleaned dataset at page load, not written
+        into the markup. Structures were parsed, salt-stripped, neutralised and canonicalised with RDKit.</p>
+    </div>
+    <div class="stats rv">
+      <div class="stat"><b class="rv" data-count="__NCOMP__">0</b>
+        <i>compounds parsed</i><em>every SMILES string validated and standardised; unparseable structures dropped</em></div>
+      <div class="stat"><b class="rv" data-count="12">0</b>
+        <i>assay endpoints</i><em>7 nuclear-receptor and 5 stress-response pathways, predicted simultaneously</em></div>
+      <div class="stat"><b class="rv" data-count="__NSCAF__">0</b>
+        <i>Bemis–Murcko scaffolds</i><em>molecules grouped by core ring system; no group spans two splits</em></div>
+      <div class="stat"><b class="rv mono" data-count="__MACRO__" data-dec="3">0</b>
+        <i>macro ROC-AUC</i><em>held-out score of the network that produced every probability on this page</em></div>
+    </div>
+  </div>
+</section>
+
+<section id="sparsity" class="tight">
+  <div class="wrap">
+    <div class="sparse">
+      <div class="matrix rv">
+        <div class="mgrid" id="mgrid" role="img" aria-label="Sampled Tox21 label matrix showing missing, inactive and active entries"></div>
+        <div class="mlegend">
+          <span><i style="background:#24364F"></i>Inactive</span>
+          <span><i style="background:#FF4D6D"></i>Active</span>
+          <span><i style="background:#101722"></i>Never tested</span>
+        </div>
+        <div class="mcap">22 compounds × 12 assays, sampled at each endpoint's real missing and active rate.</div>
+      </div>
+      <div>
+        <div class="skick rv">Why this is hard</div>
+        <h2 class="rv" style="margin-bottom:28px">The holes are the problem.</h2>
+        <div class="fact rv"><b>7.3% – 26.0%</b><span>of each assay column is empty. A blank is not a
+          negative result — it means the compound was never put through that assay. Treating blanks as
+          inactive is the single most common error on this dataset, and it quietly inflates every score.</span></div>
+        <div class="fact rv"><b>2.9% – 16.3%</b><span>active rates. A model that answered “inactive” to
+          everything would score above 84% accuracy on every endpoint and 97% on the scarcest, which is
+          why accuracy is never reported here — only ROC-AUC and PR-AUC.</span></div>
+        <div class="fact rv"><b>Masked loss</b><span>A binary mask multiplies every term of the
+          cross-entropy, so an untested assay contributes exactly zero gradient. Positive classes carry
+          tempered weights, so the rarest endpoints still train without destabilising the shared trunk.</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="browse">
+  <div class="wrap">
+    <div class="shead rv">
+      <div class="skick">Compounds</div>
+      <h2>__NSHOWN__ held-out molecules.</h2>
+      <p>Every structure below was kept out of training by its scaffold, so the model is seeing each one
+        for the first time. Open any card for the full twelve-assay panel: predicted probability, the
+        laboratory result for the same compound, and the physicochemical properties behind both.</p>
+      <p class="small">Probabilities come from the multi-task network trained for this page — 2,057
+        features, one seed, macro ROC-AUC __MACRO__ on this split. The benchmark section reports the
+        project's full run, which is a separate and stronger model.</p>
+    </div>
+  </div>
+  <div id="rows"></div>
+</section>
+
+<section id="bench" class="tight">
+  <div class="wrap">
+    <div class="shead rv">
+      <div class="skick">Benchmarks</div>
+      <h2>Five models, twelve endpoints, two metrics.</h2>
+      <p>Results from the project's full benchmark run — richer fingerprints, seed-averaged, evaluated on
+        an identical scaffold split. ROC-AUC measures ranking across both classes; PR-AUC measures how
+        well the rare active class is recovered, which is the harder and more honest question here.</p>
+      <p class="small">Select a model to profile it, or click any row of the comparison table below.</p>
+    </div>
+    <div class="mpick rv" id="mpick" role="group" aria-label="Choose a model"></div>
+    <div class="bgrid">
+      <div class="profile rv" id="profile"></div>
+      <div class="bwrap rv"><div id="bars"></div></div>
+    </div>
+    <div class="ctable bwrap rv" id="ctable"></div>
+  </div>
+</section>
+
+<section id="assays">
+  <div class="wrap">
+    <div class="shead rv">
+      <div class="skick">The twelve assays</div>
+      <h2>What each endpoint actually measures.</h2>
+      <p>Seven nuclear-receptor assays test whether a compound interferes with hormone signalling. Five
+        stress-response assays test whether it damages the cell. They differ enormously in how often they
+        return a positive, and that base rate — not the model — sets how hard each one is.</p>
+    </div>
+    <div class="eptable bwrap rv" id="eptable"></div>
+  </div>
+</section>
+
+<section id="method" class="tight">
+  <div class="wrap">
+    <div class="shead rv">
+      <div class="skick">Method</div>
+      <h2>Six decisions that make the number trustworthy.</h2>
+      <p>Any model can post a high score on this dataset by leaking scaffolds between splits or by
+        counting missing labels as negatives. These are the steps that prevent both.</p>
+    </div>
+    <div class="steps">
+      <div class="step rv"><div class="no">01</div><h4>Standardise structures</h4>
+        <p>RDKit parses every SMILES string, strips counter-ions down to the largest fragment,
+          neutralises formal charges and writes a canonical form. InChIKeys collapse replicate records
+          so the same molecule cannot appear on both sides of a split.</p>
+        <div class="fig mono">__NCOMP__ structures retained</div></div>
+      <div class="step rv"><div class="no">02</div><h4>Featurise</h4>
+        <p>Each molecule becomes a 2,048-bit ECFP4 fingerprint — circular substructure environments at
+          radius 2 — plus nine physicochemical descriptors covering weight, lipophilicity, polar surface
+          area and hydrogen bonding, clipped at the 1st and 99th percentiles and standardised.</p>
+        <div class="fig mono">2,057 features per molecule</div></div>
+      <div class="step rv"><div class="no">03</div><h4>Split by scaffold</h4>
+        <p>Compounds are grouped by Bemis–Murcko scaffold, the ring core left after side chains are
+          stripped. A group never spans two splits, and the largest groups are routed to training so
+          they cannot dominate the test set. A leak assertion fails the run if any scaffold crosses.</p>
+        <div class="fig mono">0 shared scaffolds</div></div>
+      <div class="step rv"><div class="no">04</div><h4>Mask the loss</h4>
+        <p>A binary mask sits inside the cross-entropy and zeroes every untested assay before the sum,
+          so missing labels produce no gradient at all. Positive weights are square-root tempered, which
+          counters active rates near 3% without letting one endpoint dominate the shared trunk.</p>
+        <div class="fig mono">12 heads, 1 forward pass</div></div>
+      <div class="step rv"><div class="no">05</div><h4>Benchmark fairly</h4>
+        <p>Random Forest, ExtraTrees and LightGBM are each fitted per endpoint on exactly the compounds
+          tested for that assay, using the same features and the same split. A deep model that cannot
+          beat those baselines has not earned its complexity.</p>
+        <div class="fig mono">5 models, identical folds</div></div>
+      <div class="step rv"><div class="no">06</div><h4>Quantify uncertainty</h4>
+        <p>Every score carries a 95% confidence interval from 1,000 stratified bootstrap resamples that
+          keep both classes in each draw, and a paired test compares models on identical resamples —
+          so a difference is only called real when the interval excludes zero.</p>
+        <div class="fig mono">1,000 bootstrap resamples</div></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="caveat">
+      <b>Read every number on this page as an assay result, not a safety verdict.</b> A Tox21 model
+      predicts the outcome of a specific in-vitro assay — one protein target or one cellular stress
+      reporter, in a dish. It does not predict whether a substance is safe or harmful to a person, and
+      nothing here should be used to make claims about any real product, food, cosmetic, medicine or
+      environmental sample. Assay signal is a starting point for further testing, never a conclusion.
+    </div>
+    <div class="fgrid">
+      <div><b>Project 17 — Toxicity Prediction</b>Ramleen Singh Matharu<br>Rushi Chamaria<br>Rohan Nagdev<br>Neil Patel</div>
+      <div><b>Team I</b>uGDX School of Technology<br>ATLAS SkillTech University<br>Supervisor: Prof. Dr. Rabinder Henry</div>
+      <div><b>Data</b>Tox21 public screening programme<br>Structures standardised with RDKit<br>Scaffold-split, leak-checked</div>
+      <div><b>Reported metrics</b>ROC-AUC and PR-AUC per endpoint<br>95% bootstrap confidence intervals<br>Accuracy deliberately not reported</div>
+    </div>
+  </div>
+</footer>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Compound detail">
+  <div class="scrim"></div>
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>__JS__</script>
+</body>
+</html>

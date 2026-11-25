@@ -1,0 +1,9 @@
+# Core pipeline
+numpy>=1.26
+pandas>=2.0
+scikit-learn>=1.3
+rdkit>=2023.9
+
+# Optional: the notebook's full benchmark run also uses
+# tensorflow>=2.15
+# lightgbm>=4.0
