@@ -7,11 +7,7 @@ laboratory ground truth.
 **Project 17 — Toxicity Prediction (Tox21)** · Team I · uGDX School of Technology, ATLAS SkillTech
 University · Supervisor: Prof. Dr. Rabinder Henry
 
-**Running the app:** clone this repository and open `index.html` in any browser. It is a single
-self-contained file — no server, no build step, no network calls.
-
-> This repository is private, so GitHub Pages is not enabled. To publish it, make the repository
-> public and set **Settings → Pages → Deploy from a branch → `main` / `(root)`**.
+**Live Site:** https://rushi1607.github.io/tox21-toxicity-prediction/
 
 ---
 
